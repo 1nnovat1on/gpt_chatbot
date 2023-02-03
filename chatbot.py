@@ -25,9 +25,6 @@ global APIKEY
 
 global memory
 global counter
-global LongTermMemory
-
-global commands
 
 r = sr.Recognizer()
 
@@ -36,9 +33,6 @@ global textForWindowII
 
 AWAKE = True
 
-
-sentimentScore = []
-global overallSentiment_human
 
 # Main running piece of code
 def main():
@@ -58,7 +52,7 @@ def main():
     root = tk.Tk()
     root.geometry('400x500')
     root.resizable(False, False)
-    root.title('Prometheus v0.1')
+    root.title('Prometheus v2.0')
     
     label = Label(root, text='Click Button or Press Spacebar to Wake')
     label.pack(ipadx=10, ipady=10)
