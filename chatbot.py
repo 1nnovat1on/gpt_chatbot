@@ -36,8 +36,6 @@ AWAKE = True
 
 # Main running piece of code
 def main():
-    global overallSentiment_human   
-    overallSentiment_human = ''
     
     global memory
     memory = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + "\\" + "memory.txt"
