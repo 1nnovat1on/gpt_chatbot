@@ -208,6 +208,7 @@ def speak(prompt = None):
     if "Human: " in AI_response:
         AI_response = AI_response.split("Human:")[0]
 
+    # removes everything after the last occuring period    
     def remove_post_period(string):
         if string[-1] == ".":
             return string
@@ -245,7 +246,7 @@ def dream():
 
     openai.api_key = APIKEY
     
-    new_prompt = "I am the memory module for Prometheus, the God of Knowledge. I am designed to remember names, dialogue, and other information. I need to summarize the following for better storage: \n\n \"{}\" Here's the short version: ".format(memories)
+    new_prompt = "I am a summarizer for a chatbot dedicated to science and invention. I am designed to remember names, dialogue, and other important information. I need to summarize the following for better storage: \n\n \"{}\" Here's the short version: ".format(memories)
 
     response = openai.Completion.create(
     engine="text-davinci-003",
@@ -335,7 +336,7 @@ def printII(text = None):
     textForWindowII.insert(1.0, '{} - {}\n'.format(nowString, text))
     windowII.update()
 
-#Queries Open AI for the current state of Prometheus
+#General query
 def queryOpenAITemplate(prompt = None):
 
 
