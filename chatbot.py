@@ -1,4 +1,4 @@
-# Abstergo 4-4-2023
+# 4-4-2023
 
 import warnings
 import os
