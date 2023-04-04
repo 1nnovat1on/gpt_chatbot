@@ -42,11 +42,13 @@ AWAKE = True
 
 # Pinecone setup
 pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
-embed_model = "text-embedding-ada-002"
 INDEX_NAME = 'imalive'
 index = pinecone.Index(INDEX_NAME)
 RELEVANT_THINGS_TO_RETURN_FROM_PINECONE = 5
 PINECONE_CHARACTER_LIMIT = 8
+
+# OpenAI Setup
+embed_model = "text-embedding-ada-002"
 
 # Main running piece of code
 def main():

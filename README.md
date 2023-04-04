@@ -1,13 +1,13 @@
 # gpt_chatbot
 This chatbot allows you to use your microphone to communicate with GPT-4. --Formerly GPT-3
 
-API keys for OpenAI and Pinecone required!
+It features the Pinecone API to create a longterm memory... it will loop in bits of conversation you've had, best it can.
 
-It uses Windows TTS to respond, which might require some intial setup in your control panel/settings. Only works on Windows, I assume.
+Accounts and API keys for OpenAI and Pinecone required. You will also need to create an index in Pinecone.
 
-Now featuring PINECONE LANG-CHAIN API!!!
+It uses Windows TTS to respond, which might require some intial setup in your control panel/settings.
 
-Your chatbot now has a longterm memory... he will loop in bits of conversation you've had, best he can.
+
 
 
 
