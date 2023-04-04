@@ -11,6 +11,12 @@ from tkinter import *
 import time
 import voiceTest
 from datetime import datetime
+import pinecone
+import tensorflow_hub as hub
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
+import json
 
 warnings.filterwarnings("ignore")
 
@@ -18,7 +24,7 @@ def clear_terminal():
   os.system('cls')
 
 clear_terminal()
-
+USER_ID = 1
 
 global engine
 global APIKEY
@@ -33,12 +39,39 @@ global textForWindowII
 
 AWAKE = True
 
+# Pinecone setup
+pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
+embed_model = "text-embedding-ada-002"
+INDEX_NAME = 'imalive'
+index = pinecone.Index(INDEX_NAME)
+RELEVANT_THINGS_TO_RETURN_FROM_PINECONE = 5
+PINECONE_CHARACTER_LIMIT = 8
 
 # Main running piece of code
 def main():
+
+    # # Load the pre-trained BERT model and tokenizer
+    global model_name
+    # Define the model name
+    model_name = 'sentence-transformers/bert-large-nli-stsb-mean-tokens'
+    
+    global model
+
+    USER_ID = 1
+    # Load the model using SentenceTransformer
+    with tqdm(total=1, desc="Loading BERT model") as pbar:
+        model = SentenceTransformer(model_name)
+        pbar.update(1) 
+          
     
     global memory
     memory = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + "\\" + "memory.txt"
+    
+    api_key=os.getenv('PINECONEKEY')
+    pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
+
+    global longTermMemory
+    longTermMemory = pinecone.Index('imalive')
     
     global counter
     counter = 0
@@ -115,9 +148,17 @@ def main():
             root.update()
 
 
-            response = speak(text)
+            #response = speak(text)
+            response = queryOpenAITemplate3(text)
+            
+            # ----- ElevenLabs
+            #voiceTest.speak(response)
 
-            voiceTest.speak(response)
+            # ----- Windows TTS
+            talk(response)
+
+
+            uploadToMemory(text, response)
 
 
             outputLabel.config(text = "Response: {}".format(response))
@@ -162,6 +203,122 @@ def main():
     root.bind('<space>',lambda event:mic())
     root.mainloop()
 
+def queryOpenAITemplate3(prompt):
+
+    global counter
+    global memory
+    global APIKEY
+    global overallSentiment_human
+
+    #print("running")
+
+    f = open(memory, 'r')
+    
+    lines = f.read()
+    
+    f.close()
+
+    if len(lines) > 10000:
+        dream()
+        lines = ""
+    
+    # Step 1: Retrieve relevant contexts for the mail body (requirements)
+    contexts = retrieve_relevant_metadata(prompt)
+
+    contexts_as_strings = [json.dumps({**x, "metadata": json.dumps(x["metadata"], indent=2)}) for x in contexts]
+
+
+    # build our prompt with the retrieved contexts included
+    prompt_start = (
+        "This info from your longterm memory might be relevant to the convo.\n\n"
+    )
+
+    prompt_end = (
+        lines + "\n\n Human:\n\n{}\n\nme:".format(prompt)
+    )
+    
+    new_prompt = (
+        prompt_start +
+        "\\n\\n---\\n\\n".join(contexts_as_strings) +
+        prompt_end
+    )
+
+
+    APIKEY = os.getenv('OPEN_API_KEY')
+
+    openai.api_key = APIKEY
+
+    new_prompt = lines + "\n\n Human: \n\n{}\n\nme:".format(prompt)
+    # Step 2: Generate the initial Python script using the refined prompt
+    messages = [
+        {"role": "system", "content": "This is a conversation between Prometheus, a genius-level entity dedicated to science and invention. Speak from his POV."},
+        {"role": "user", "content": new_prompt}
+    ]
+
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages
+    )
+    
+    AI_response = response.choices[0].message['content'].strip()
+
+    if "Human: " in AI_response:
+        AI_response = AI_response.split("Human:")[0]
+
+    # removes everything after the last occuring period    
+    def remove_post_period(string):
+        if string[-1] == ".":
+            return string
+        else:
+            index = string.rfind(".")
+            return string[:index+1]
+    
+    AI_response = remove_post_period(AI_response)
+
+    print(AI_response)
+    printII('I speak')
+
+
+    new_prompt = lines + "\n\nHuman:{}\n\nMe:{}".format(prompt, AI_response)
+
+    f = open(memory,'w')
+    f.write(new_prompt)
+    f.close()
+    
+    
+    return str(AI_response)
+
+def retrieve_relevant_metadata(query):
+
+    
+    global APIKEY
+    openai.api_key = APIKEY
+
+    res = openai.Embedding.create(
+        input=[query],
+        engine=embed_model
+    )
+
+    # retrieve from Pinecone
+    xq = res['data'][0]['embedding']
+    
+    # get relevant contexts
+    res = index.query(xq, top_k=3, include_metadata=True)  # Increase the top_k value to 20
+
+
+    score_threshold = 0  # Set your desired threshold here
+
+    filtered_results = [
+        {"id": x.id, "score": x.score, "metadata": x.metadata}
+        for x in res['matches']
+        if x.get('score', 0) > score_threshold
+]
+
+    
+# returns a list    
+    return filtered_results
+
 #Queries Open AI for the current state of Prometheus
 def speak(prompt = None):
 
@@ -183,7 +340,7 @@ def speak(prompt = None):
     openai.api_key = APIKEY
 
 
-    if len(lines) > 2000:
+    if len(lines) > 7000:
         dream()
         lines = ""
 
@@ -227,8 +384,8 @@ def speak(prompt = None):
     f = open(memory,'w')
     f.write(new_prompt)
     f.close()
-
-
+    
+    
     return str(AI_response)
 
 def dream():
@@ -248,20 +405,20 @@ def dream():
     
     new_prompt = "I am a summarizer for a chatbot dedicated to science and invention. I am designed to remember names, dialogue, and other important information. I need to summarize the following for better storage: \n\n \"{}\" Here's the short version: ".format(memories)
 
-    response = openai.Completion.create(
-    engine="text-davinci-003",
-    prompt=new_prompt,
-    temperature=0.7,
-    max_tokens=1000,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0,
+    # Step 2: Generate the initial Python script using the refined prompt
+    messages = [
+        {"role": "system", "content": new_prompt},
+        {"role": "user", "content": memories}
+    ]
 
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages
     )
-
-    dream = response['choices'][0]['text']
     
-
+    dream = response.choices[0].message['content'].strip()
+    
     f = open(memory,'w')
     now = datetime.now()
     
@@ -288,7 +445,6 @@ def talk(text = None):
     
     engine.say(text)
     engine.runAndWait()
-
 
 def microphone():
 
@@ -327,7 +483,6 @@ def microphone2():
                 #print("I didn't understand ya: {}".format(e))
                 continue
 
-
 def printII(text = None):
     global windowII
     global textForWindowII
@@ -362,6 +517,30 @@ def queryOpenAITemplate(prompt = None):
 
     return str(AI_response)
 
+def queryOpenAITemplate2(prompt = None):
+
+
+    global APIKEY
+
+    APIKEY = os.getenv('OPEN_API_KEY')
+
+    openai.api_key = APIKEY
+
+    response = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",
+    prompt=prompt,
+    temperature=0.7,
+    max_tokens=256,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0,
+    )
+
+
+    AI_response = response['choices'][0]['text']
+
+
+    return str(AI_response)
 
 # Function which returns last word
 def lastWord(string):
@@ -378,6 +557,69 @@ def lastWord(string):
     output = words[-1]
 
     return output.replace(".", "")
+
+
+def memory():
+    
+    global longTermMemory
+
+    longTermMemory = pinecone.Index(index_name='imalive')
+    results = longTermMemory.query(queries=['...'], k=10)
+
+    return results
+    
+
+def encode_text(text):
+    # Encode the text using the pre-trained BERT model
+    vector = model.encode([text])[0]
+    print(vector.shape)
+    # Reshape the vector to match the dimension of the index (1536)
+    if vector.shape[0] != 512:
+        vector = np.resize(vector, (512,))
+    # Convert the vector to a list of floats
+    vector = [float(item) for item in vector]
+    
+    return vector
+
+def decode_vector(vector):
+    # Convert the vector back into a numpy array
+    vector = np.array(vector)
+    # Reshape the vector to match the dimension of the original encoding
+    vector = np.reshape(vector, (1, -1))
+    # Use the BERT model to decode the vector back into text
+    text = model.decode(vector)[0]
+    return text
+
+
+def generate_record_id(USER_ID):
+    timestamp = int(time.time())
+    record_id = f"{USER_ID}_{timestamp}"
+    return record_id
+
+def uploadToMemory(prompt=None, response=None):
+    global longTermMemory
+    #input_vec = encode_text(f"prompt: {prompt}; response: {response}")
+    input_vec = openai.Embedding.create(
+        input=[prompt, response],
+        engine=embed_model
+    )
+
+
+    record_id = generate_record_id(USER_ID)
+
+    try:
+        # Concatenate file name and content
+        masterVector = f"prompt: {prompt}\nresponse: {response}"
+
+        res = openai.Embedding.create(input=[masterVector], engine=embed_model)
+        embedding = res['data'][0]['embedding']
+
+        metadata = {"prompt": prompt, "response": response}
+        to_upsert = [{"id": record_id, "values": embedding, "metadata": metadata}]
+        longTermMemory.upsert(vectors=to_upsert) 
+
+    except Exception as e:
+        print("FAILURE: {}".format(e))
 
 
 if __name__ == "__main__":
