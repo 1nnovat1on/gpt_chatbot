@@ -12,4 +12,4 @@ It uses Windows TTS to respond, which might require some intial setup in your co
 
 
 4-4-23
-It also uses ElevenLabs API to respond with a realistic voice.  --DEPRECATED ELEVENLABS API IS TOO SLOW. Maybe someone has an alternative or can figure out how to stream the sound
+It also uses ElevenLabs API to respond with a realistic voice.  --Disabled for speed
