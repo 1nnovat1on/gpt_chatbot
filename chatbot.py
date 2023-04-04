@@ -1,3 +1,5 @@
+# Abstergo 4-4-2023
+
 import warnings
 import os
 import openai
@@ -9,14 +11,12 @@ from tkinter.ttk import Label
 from datetime import datetime
 from tkinter import *
 import time
-import voiceTest
 from datetime import datetime
 import pinecone
-import tensorflow_hub as hub
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from tqdm import tqdm
 import json
+
+#Eleven Labs or other API goes here
+import voiceTest
 
 warnings.filterwarnings("ignore")
 
@@ -24,6 +24,7 @@ def clear_terminal():
   os.system('cls')
 
 clear_terminal()
+
 USER_ID = 1
 
 global engine
@@ -50,24 +51,10 @@ PINECONE_CHARACTER_LIMIT = 8
 # Main running piece of code
 def main():
 
-    # # Load the pre-trained BERT model and tokenizer
-    global model_name
-    # Define the model name
-    model_name = 'sentence-transformers/bert-large-nli-stsb-mean-tokens'
-    
-    global model
-
-    USER_ID = 1
-    # Load the model using SentenceTransformer
-    with tqdm(total=1, desc="Loading BERT model") as pbar:
-        model = SentenceTransformer(model_name)
-        pbar.update(1) 
-          
-    
+   
     global memory
     memory = os.path.abspath(os.path.dirname(os.path.abspath(__file__))) + "\\" + "memory.txt"
     
-    api_key=os.getenv('PINECONEKEY')
     pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
 
     global longTermMemory
@@ -203,6 +190,7 @@ def main():
     root.bind('<space>',lambda event:mic())
     root.mainloop()
 
+# Queries OpenAI
 def queryOpenAITemplate3(prompt):
 
     global counter
@@ -210,7 +198,7 @@ def queryOpenAITemplate3(prompt):
     global APIKEY
     global overallSentiment_human
 
-    #print("running")
+    
 
     f = open(memory, 'r')
     
@@ -222,7 +210,7 @@ def queryOpenAITemplate3(prompt):
         dream()
         lines = ""
     
-    # Step 1: Retrieve relevant contexts for the mail body (requirements)
+    # Step 1: Retrieve relevant contexts for the prompt
     contexts = retrieve_relevant_metadata(prompt)
 
     contexts_as_strings = [json.dumps({**x, "metadata": json.dumps(x["metadata"], indent=2)}) for x in contexts]
@@ -243,18 +231,18 @@ def queryOpenAITemplate3(prompt):
         prompt_end
     )
 
-
     APIKEY = os.getenv('OPEN_API_KEY')
 
     openai.api_key = APIKEY
 
     new_prompt = lines + "\n\n Human: \n\n{}\n\nme:".format(prompt)
-    # Step 2: Generate the initial Python script using the refined prompt
+
     messages = [
-        {"role": "system", "content": "This is a conversation between Prometheus, a genius-level entity dedicated to science and invention. Speak from his POV."},
+        {"role": "system", "content": "This is a conversation between Prometheus, a genius scientist and inventor. Speak from his POV."},
         {"role": "user", "content": new_prompt}
     ]
 
+    printII("I think")
 
     response = openai.ChatCompletion.create(
         model="gpt-4",
@@ -276,7 +264,7 @@ def queryOpenAITemplate3(prompt):
     
     AI_response = remove_post_period(AI_response)
 
-    print(AI_response)
+    print("{}\n".format(AI_response))
     printII('I speak')
 
 
@@ -289,6 +277,7 @@ def queryOpenAITemplate3(prompt):
     
     return str(AI_response)
 
+# Queries Pinecone
 def retrieve_relevant_metadata(query):
 
     
@@ -319,7 +308,186 @@ def retrieve_relevant_metadata(query):
 # returns a list    
     return filtered_results
 
-#Queries Open AI for the current state of Prometheus
+# Condenses the short term memory into a summary
+def dream():
+
+    global memory
+    global APIKEY
+    
+    f = open(memory, 'r')
+    
+    memories = f.read()
+    #print(memories)
+    
+    f.close()
+    global APIKEY
+
+    openai.api_key = APIKEY
+    
+    new_prompt = "I am a summarizer for a chatbot named Prometheus. I am designed to remember names, dialogue, and other important information. I need to summarize text for better storage and return ONLY the summary:"
+
+    # Step 2: Generate the initial Python script using the refined prompt
+    messages = [
+        {"role": "system", "content": new_prompt},
+        {"role": "user", "content": memories}
+    ]
+
+    printII("I dream")
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages
+    )
+    
+    dream = response.choices[0].message['content'].strip()
+    
+    f = open(memory,'w')
+    now = datetime.now()
+    
+    date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+
+    f.write("Summary of last conversation:\n {}\n Continue from here.".format(dream))
+    f.close()
+
+    global counter
+    counter = 0
+
+    return
+
+# Speaks with Windows TTS
+def talk(text = None):
+    
+    global counter
+    global engine
+    
+    if counter == 0:
+        engine = pyttsx3.init()
+        voices = engine.getProperty('voices')
+        engine.setProperty('voice', voices[1].id)
+        counter = counter + 1
+    
+    engine.say(text)
+    engine.runAndWait()
+
+# Listems with Google voice recognition
+def microphone2():
+    
+    while AWAKE:
+        with sr.Microphone() as source:
+            #print('listening...')
+
+            audio_data = r.listen(source)
+            
+            try:
+                time.sleep(1)
+                text = r.recognize_google(audio_data)
+                #print(text)
+
+                return text
+
+            except Exception as e:
+                #print("I didn't understand ya: {}".format(e))
+                continue
+
+# Displays to Tkinter
+def printII(text = None):
+    global windowII
+    global textForWindowII
+    nowString = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    textForWindowII.insert(1.0, '{} - {}\n'.format(nowString, text))
+    windowII.update()
+
+# Function which returns last word
+def lastWord(string):
+
+    if string == None:
+        return ''
+
+    #splitting the string
+    words = string.split()
+
+    output = words[-1]
+
+    return output.replace(".", "")
+
+# Create an ID for the record in Pinecone
+def generate_record_id(USER_ID):
+    timestamp = int(time.time())
+    record_id = f"{USER_ID}_{timestamp}"
+    return record_id
+
+# 'Upsert' to Pinecone
+def uploadToMemory(prompt=None, response=None):
+    global longTermMemory
+
+    record_id = generate_record_id(USER_ID)
+
+    try:
+        # Concatenate file name and content
+        masterVector = f"prompt: {prompt}\nresponse: {response}"
+
+        res = openai.Embedding.create(input=[masterVector], engine=embed_model)
+        embedding = res['data'][0]['embedding']
+
+        metadata = {"prompt": prompt, "response": response}
+        to_upsert = [{"id": record_id, "values": embedding, "metadata": metadata}]
+        longTermMemory.upsert(vectors=to_upsert) 
+
+    except Exception as e:
+        print("FAILURE: {}".format(e))
+
+#General query
+def queryOpenAITemplate(prompt = None):
+
+
+    global APIKEY
+
+    APIKEY = os.getenv('OPEN_API_KEY')
+
+    openai.api_key = APIKEY
+
+    response = openai.Completion.create(
+    engine="text-davinci-003",
+    prompt=prompt,
+    temperature=0.7,
+    max_tokens=256,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0,
+    )
+
+
+    AI_response = response['choices'][0]['text']
+
+
+    return str(AI_response)
+
+#--OLD:
+def queryOpenAITemplate2(prompt = None):
+
+
+    global APIKEY
+
+    APIKEY = os.getenv('OPEN_API_KEY')
+
+    openai.api_key = APIKEY
+
+    response = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",
+    prompt=prompt,
+    temperature=0.7,
+    max_tokens=256,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0,
+    )
+
+
+    AI_response = response['choices'][0]['text']
+
+
+    return str(AI_response)
+#--OLD: Queries Open AI for the current state of Prometheus
 def speak(prompt = None):
 
 
@@ -387,239 +555,6 @@ def speak(prompt = None):
     
     
     return str(AI_response)
-
-def dream():
-
-    global memory
-    global APIKEY
-    
-    f = open(memory, 'r')
-    
-    memories = f.read()
-    #print(memories)
-    
-    f.close()
-    global APIKEY
-
-    openai.api_key = APIKEY
-    
-    new_prompt = "I am a summarizer for a chatbot dedicated to science and invention. I am designed to remember names, dialogue, and other important information. I need to summarize the following for better storage: \n\n \"{}\" Here's the short version: ".format(memories)
-
-    # Step 2: Generate the initial Python script using the refined prompt
-    messages = [
-        {"role": "system", "content": new_prompt},
-        {"role": "user", "content": memories}
-    ]
-
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=messages
-    )
-    
-    dream = response.choices[0].message['content'].strip()
-    
-    f = open(memory,'w')
-    now = datetime.now()
-    
-    date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
-
-    f.write("Summary of last conversation:\n {}\n Continue from here.".format(dream))
-    f.close()
-
-    global counter
-    counter = 0
-
-    return
-
-def talk(text = None):
-    
-    global counter
-    global engine
-    
-    if counter == 0:
-        engine = pyttsx3.init()
-        voices = engine.getProperty('voices')
-        engine.setProperty('voice', voices[1].id)
-        counter = counter + 1
-    
-    engine.say(text)
-    engine.runAndWait()
-
-def microphone():
-
-    with sr.Microphone() as source:
-    # read the audio data from the default microphone
-        audio_data = r.record(source, duration=7)
-        print("Recognizing...")
-        # convert speech to text
-        try:
-            text = r.recognize_google(audio_data)
-        except Exception as e:
-            text = "..."
-            return text
-            
-        #print(text)
-
-
-        return text
-
-def microphone2():
-    
-    while AWAKE:
-        with sr.Microphone() as source:
-            #print('listening...')
-
-            audio_data = r.listen(source)
-            
-            try:
-                time.sleep(1)
-                text = r.recognize_google(audio_data)
-                #print(text)
-
-                return text
-
-            except Exception as e:
-                #print("I didn't understand ya: {}".format(e))
-                continue
-
-def printII(text = None):
-    global windowII
-    global textForWindowII
-    nowString = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    textForWindowII.insert(1.0, '{} - {}\n'.format(nowString, text))
-    windowII.update()
-
-#General query
-def queryOpenAITemplate(prompt = None):
-
-
-    global APIKEY
-
-    APIKEY = os.getenv('OPEN_API_KEY')
-
-    openai.api_key = APIKEY
-
-    response = openai.Completion.create(
-    engine="text-davinci-003",
-    prompt=prompt,
-    temperature=0.7,
-    max_tokens=256,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0,
-    )
-
-
-    AI_response = response['choices'][0]['text']
-
-
-    return str(AI_response)
-
-def queryOpenAITemplate2(prompt = None):
-
-
-    global APIKEY
-
-    APIKEY = os.getenv('OPEN_API_KEY')
-
-    openai.api_key = APIKEY
-
-    response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    prompt=prompt,
-    temperature=0.7,
-    max_tokens=256,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0,
-    )
-
-
-    AI_response = response['choices'][0]['text']
-
-
-    return str(AI_response)
-
-# Function which returns last word
-def lastWord(string):
-
-    if string == None:
-        return ''
-
-    #splitting the string
-    words = string.split()
-    #slicing the list (negative index means index from the end)
-    #-1 means the last element of the list
-    #print(words[-1])
-
-    output = words[-1]
-
-    return output.replace(".", "")
-
-
-def memory():
-    
-    global longTermMemory
-
-    longTermMemory = pinecone.Index(index_name='imalive')
-    results = longTermMemory.query(queries=['...'], k=10)
-
-    return results
-    
-
-def encode_text(text):
-    # Encode the text using the pre-trained BERT model
-    vector = model.encode([text])[0]
-    print(vector.shape)
-    # Reshape the vector to match the dimension of the index (1536)
-    if vector.shape[0] != 512:
-        vector = np.resize(vector, (512,))
-    # Convert the vector to a list of floats
-    vector = [float(item) for item in vector]
-    
-    return vector
-
-def decode_vector(vector):
-    # Convert the vector back into a numpy array
-    vector = np.array(vector)
-    # Reshape the vector to match the dimension of the original encoding
-    vector = np.reshape(vector, (1, -1))
-    # Use the BERT model to decode the vector back into text
-    text = model.decode(vector)[0]
-    return text
-
-
-def generate_record_id(USER_ID):
-    timestamp = int(time.time())
-    record_id = f"{USER_ID}_{timestamp}"
-    return record_id
-
-def uploadToMemory(prompt=None, response=None):
-    global longTermMemory
-    #input_vec = encode_text(f"prompt: {prompt}; response: {response}")
-    input_vec = openai.Embedding.create(
-        input=[prompt, response],
-        engine=embed_model
-    )
-
-
-    record_id = generate_record_id(USER_ID)
-
-    try:
-        # Concatenate file name and content
-        masterVector = f"prompt: {prompt}\nresponse: {response}"
-
-        res = openai.Embedding.create(input=[masterVector], engine=embed_model)
-        embedding = res['data'][0]['embedding']
-
-        metadata = {"prompt": prompt, "response": response}
-        to_upsert = [{"id": record_id, "values": embedding, "metadata": metadata}]
-        longTermMemory.upsert(vectors=to_upsert) 
-
-    except Exception as e:
-        print("FAILURE: {}".format(e))
 
 
 if __name__ == "__main__":
