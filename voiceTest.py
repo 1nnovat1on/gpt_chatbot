@@ -1,4 +1,5 @@
-
+#--deprecated. maybe you can fix it or make it go faster?
+# We need the audio to play more quickly, and maybe stream instead of save locally
     
 import requests
 import playsound

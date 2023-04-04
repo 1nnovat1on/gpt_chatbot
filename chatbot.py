@@ -43,9 +43,7 @@ AWAKE = True
 # Pinecone setup
 pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
 INDEX_NAME = 'imalive'
-index = pinecone.Index(INDEX_NAME)
-RELEVANT_THINGS_TO_RETURN_FROM_PINECONE = 5
-PINECONE_CHARACTER_LIMIT = 8
+NUMBER_OF_RELEVANT_THINGS_TO_RETURN_FROM_PINECONE = 5
 
 # OpenAI Setup
 embed_model = "text-embedding-ada-002"
@@ -60,14 +58,16 @@ def main():
     pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
 
     global longTermMemory
-    longTermMemory = pinecone.Index('imalive')
+    longTermMemory = pinecone.Index(INDEX_NAME)
     
     global counter
     counter = 0
 
-    #store your keys on your machine!
+    # Store your keys on your machine!
     global APIKEY
     APIKEY = os.getenv('OPEN_API_KEY')
+
+    # Tkinter Setup
 
     root = tk.Tk()
     root.geometry('400x500')
@@ -286,6 +286,8 @@ def retrieve_relevant_metadata(query):
     global APIKEY
     openai.api_key = APIKEY
 
+    global longTermMemory
+
     res = openai.Embedding.create(
         input=[query],
         engine=embed_model
@@ -295,7 +297,7 @@ def retrieve_relevant_metadata(query):
     xq = res['data'][0]['embedding']
     
     # get relevant contexts
-    res = index.query(xq, top_k=3, include_metadata=True)  # Increase the top_k value to 20
+    res = longTermMemory.query(xq, top_k=NUMBER_OF_RELEVANT_THINGS_TO_RETURN_FROM_PINECONE, include_metadata=True)
 
 
     score_threshold = 0  # Set your desired threshold here
