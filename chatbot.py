@@ -65,7 +65,7 @@ def main():
 
     # Store your keys on your machine!
     global APIKEY
-    APIKEY = os.getenv('OPEN_API_KEY')
+    APIKEY = os.getenv('OPENAI_API_KEY')
 
     # Tkinter Setup
 
@@ -440,7 +440,7 @@ def uploadToMemory(prompt=None, response=None):
     except Exception as e:
         print("FAILURE: {}".format(e))
 
-#General query
+#OLD - General query
 def queryOpenAITemplate(prompt = None):
 
 
