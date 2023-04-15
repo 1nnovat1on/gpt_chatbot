@@ -3,3 +3,5 @@ playsound==1.2.2
 pyttsx3==2.90
 requests==2.25.1
 SpeechRecognition==3.8.1
+pinecone-client
+pyaudio
