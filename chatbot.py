@@ -1,4 +1,4 @@
-# 4-14-2023
+# 4-4-2023
 
 import warnings
 import os
@@ -14,9 +14,6 @@ import time
 from datetime import datetime
 import pinecone
 import json
-
-#Eleven Labs or other API goes here
-import voiceTest
 
 warnings.filterwarnings("ignore")
 
@@ -567,6 +564,5 @@ def speak(prompt = None):
 
 if __name__ == "__main__":
     main()
-
 
 
