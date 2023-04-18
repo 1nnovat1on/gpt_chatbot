@@ -1,5 +1,7 @@
-openai==0.19.0
-playsound==1.2.2
-pyttsx3==2.90
-requests==2.25.1
-SpeechRecognition==3.8.1
+openai
+playsound
+pyttsx3
+requests
+SpeechRecognition
+pinecone-client
+pyaudio

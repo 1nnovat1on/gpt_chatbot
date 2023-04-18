@@ -1,4 +1,4 @@
-# 4-4-2023
+# 4-14-2023
 
 import warnings
 import os
@@ -14,9 +14,6 @@ import time
 from datetime import datetime
 import pinecone
 import json
-
-#Eleven Labs or other API goes here
-import voiceTest
 
 warnings.filterwarnings("ignore")
 
@@ -65,7 +62,7 @@ def main():
 
     # Store your keys on your machine!
     global APIKEY
-    APIKEY = os.getenv('OPEN_API_KEY')
+    APIKEY = os.getenv('OPENAI_API_KEY')
 
     # Tkinter Setup
 
@@ -233,7 +230,7 @@ def queryOpenAITemplate3(prompt):
         prompt_end
     )
 
-    APIKEY = os.getenv('OPEN_API_KEY')
+    APIKEY = os.getenv('OPENAI_API_KEY')
 
     openai.api_key = APIKEY
 
@@ -370,7 +367,7 @@ def talk(text = None):
     engine.say(text)
     engine.runAndWait()
 
-# Listems with Google voice recognition
+# Listens with Google voice recognition
 def microphone2():
     
     while AWAKE:
@@ -382,6 +379,10 @@ def microphone2():
             try:
                 time.sleep(1)
                 text = r.recognize_google(audio_data)
+                #text = openai.Audio.transcribe("whisper-1", audio_data)
+                # Extract the text from the transcript
+                #text = transcript["choices"][0]["text"]
+                return text
                 #print(text)
 
                 return text
@@ -444,7 +445,7 @@ def queryOpenAITemplate(prompt = None):
 
     global APIKEY
 
-    APIKEY = os.getenv('OPEN_API_KEY')
+    APIKEY = os.getenv('OPENAI_API_KEY')
 
     openai.api_key = APIKEY
 
@@ -470,7 +471,7 @@ def queryOpenAITemplate2(prompt = None):
 
     global APIKEY
 
-    APIKEY = os.getenv('OPEN_API_KEY')
+    APIKEY = os.getenv('OPENAI_API_KEY')
 
     openai.api_key = APIKEY
 
@@ -505,7 +506,7 @@ def speak(prompt = None):
     f.close()
     global APIKEY
 
-    APIKEY = os.getenv('OPEN_API_KEY')
+    APIKEY = os.getenv('OPENAI_API_KEY')
 
     openai.api_key = APIKEY
 
@@ -561,6 +562,5 @@ def speak(prompt = None):
 
 if __name__ == "__main__":
     main()
-
 
 
