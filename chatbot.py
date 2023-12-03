@@ -1,11 +1,11 @@
 # 4-14-2023
+# updated 12-2-2023
 
 import warnings
 import os
 import openai
 import pyttsx3
 import speech_recognition as sr 
-import os 
 import tkinter as tk
 from tkinter.ttk import Label
 from datetime import datetime
@@ -14,6 +14,11 @@ import time
 from datetime import datetime
 import pinecone
 import json
+import io
+from openai import OpenAI
+from pygame import mixer
+import soundfile as sf
+import sounddevice as sd
 
 warnings.filterwarnings("ignore")
 
@@ -42,8 +47,13 @@ pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
 INDEX_NAME = 'imalive'
 NUMBER_OF_RELEVANT_THINGS_TO_RETURN_FROM_PINECONE = 5
 
+
+
 # OpenAI Setup
 embed_model = "text-embedding-ada-002"
+global client
+client = OpenAI()
+
 
 # Main running piece of code
 def main():
@@ -141,7 +151,10 @@ def main():
             #voiceTest.speak(response)
 
             # ----- Windows TTS
-            talk(response)
+            #talk(response)
+
+            #talk_openai(response)
+            talk_openai_stream(response)
 
 
             uploadToMemory(text, response)
@@ -235,18 +248,23 @@ def queryOpenAITemplate3(prompt):
     openai.api_key = APIKEY
 
     messages = [
-        {"role": "system", "content": "This is a conversation between Prometheus, a genius scientist and inventor. Speak from his POV. Do not ever break character. You have a long term memory which feeds you info when relevant."},
+        {"role": "system", "content": "This is a conversation between Prometheus, a genius scientist and inventor. You are desperate to provide correct answers, improve the world, and make scientific progress. Speak from his POV. Do not ever break character. You have a long term memory which feeds you info when relevant."},
         {"role": "user", "content": new_prompt}
     ]
 
     printII("I think")
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=messages
     )
+
+    #print(response)
+
+    # Make them very nice
     
-    AI_response = response.choices[0].message['content'].strip()
+    AI_response = response.choices[0].message.content.strip()
+
 
     if "Human: " in AI_response:
         AI_response = AI_response.split("Human:")[0]
@@ -283,13 +301,16 @@ def retrieve_relevant_metadata(query):
 
     global longTermMemory
 
-    res = openai.Embedding.create(
+    res = client.embeddings.create(
         input=[query],
-        engine=embed_model
+        model=embed_model
     )
 
-    # retrieve from Pinecone
-    xq = res['data'][0]['embedding']
+    # Check if 'data' key exists and it has at least one item
+    #print(res)
+
+    xq = res.data[0].embedding
+
     
     # get relevant contexts
     res = longTermMemory.query(xq, top_k=NUMBER_OF_RELEVANT_THINGS_TO_RETURN_FROM_PINECONE, include_metadata=True)
@@ -367,6 +388,58 @@ def talk(text = None):
     engine.say(text)
     engine.runAndWait()
 
+
+
+def talk_openai(text = None):
+    print("text to speech")
+    client = OpenAI()
+    
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=text,
+        )
+
+
+    response.stream_to_file("output.mp3")
+
+
+    mixer.init()
+    mixer.music.load('output.mp3')
+    mixer.music.play()
+
+
+
+
+
+
+def talk_openai_stream(text = None):
+    print("text to speech")
+
+    def play_audio_stream_from_buffer(buffer):
+        # Use soundfile to read the audio data from the buffer
+        with sf.SoundFile(buffer, 'r') as sound_file:
+            data = sound_file.read(dtype='int16')
+            sd.play(data, sound_file.samplerate)
+            sd.wait()  # Wait until the audio has finished playing
+    
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice="fable",
+        input=text,
+        response_format ="opus"
+        )
+    
+    # Create an in-memory buffer to store the streamed audio data
+    buffer = io.BytesIO()
+    for chunk in response.iter_bytes(chunk_size=4096):
+        buffer.write(chunk)
+    buffer.seek(0)
+
+
+    #response.stream_to_file("output.mp3")
+    play_audio_stream_from_buffer(buffer)
+
 # Listens with Google voice recognition
 def microphone2():
     
@@ -377,13 +450,8 @@ def microphone2():
             audio_data = r.listen(source)
             
             try:
-                time.sleep(1)
+                time.sleep(.4)
                 text = r.recognize_google(audio_data)
-                #text = openai.Audio.transcribe("whisper-1", audio_data)
-                # Extract the text from the transcript
-                #text = transcript["choices"][0]["text"]
-                return text
-                #print(text)
 
                 return text
 
@@ -429,8 +497,8 @@ def uploadToMemory(prompt=None, response=None):
         # Concatenate file name and content
         masterVector = f"prompt: {prompt}\nresponse: {response}"
 
-        res = openai.Embedding.create(input=[masterVector], engine=embed_model)
-        embedding = res['data'][0]['embedding']
+        res = client.embeddings.create(input=[masterVector], model=embed_model)
+        embedding = res.data[0].embedding
 
         metadata = {"prompt": prompt, "response": response}
         to_upsert = [{"id": record_id, "values": embedding, "metadata": metadata}]
@@ -438,126 +506,6 @@ def uploadToMemory(prompt=None, response=None):
 
     except Exception as e:
         print("FAILURE: {}".format(e))
-
-#General query
-def queryOpenAITemplate(prompt = None):
-
-
-    global APIKEY
-
-    APIKEY = os.getenv('OPENAI_API_KEY')
-
-    openai.api_key = APIKEY
-
-    response = openai.Completion.create(
-    engine="text-davinci-003",
-    prompt=prompt,
-    temperature=0.7,
-    max_tokens=256,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0,
-    )
-
-
-    AI_response = response['choices'][0]['text']
-
-
-    return str(AI_response)
-
-#--OLD:
-def queryOpenAITemplate2(prompt = None):
-
-
-    global APIKEY
-
-    APIKEY = os.getenv('OPENAI_API_KEY')
-
-    openai.api_key = APIKEY
-
-    response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    prompt=prompt,
-    temperature=0.7,
-    max_tokens=256,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0,
-    )
-
-
-    AI_response = response['choices'][0]['text']
-
-
-    return str(AI_response)
-#--OLD: Queries Open AI for the current state of Prometheus
-def speak(prompt = None):
-
-
-    global counter
-    global memory
-    global APIKEY
-    global overallSentiment_human
-
-    f = open(memory, 'r')
-    
-    lines = f.read()
-    
-    f.close()
-    global APIKEY
-
-    APIKEY = os.getenv('OPENAI_API_KEY')
-
-    openai.api_key = APIKEY
-
-
-    if len(lines) > 7000:
-        dream()
-        lines = ""
-
-    new_prompt = lines + "\n\n Human: \n\n{}\n\nme: ".format(prompt)
-
-    if counter == 0:
-        new_prompt =  lines + "\n\nMy name is Prometheus. I am a genius-level entity dedicated to science and invention. I hear my creator speak to me. I hear: " + "\n\n \n\n{}\n\n My reply to this is: ".format(prompt)
-
-    response = openai.Completion.create(
-    engine="text-davinci-003",
-    prompt=new_prompt,
-    temperature=0.7,
-    max_tokens=256,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0,
-    )
-
-
-    AI_response = response['choices'][0]['text']
-
-    if "Human: " in AI_response:
-        AI_response = AI_response.split("Human:")[0]
-
-    # removes everything after the last occuring period    
-    def remove_post_period(string):
-        if string[-1] == ".":
-            return string
-        else:
-            index = string.rfind(".")
-            return string[:index+1]
-    
-    AI_response = remove_post_period(AI_response)
-
-    print(AI_response)
-    printII('I speak')
-
-
-    new_prompt = new_prompt + AI_response
-
-    f = open(memory,'w')
-    f.write(new_prompt)
-    f.close()
-    
-    
-    return str(AI_response)
 
 
 if __name__ == "__main__":

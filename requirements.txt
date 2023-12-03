@@ -1,7 +1,8 @@
 openai
-playsound
 pyttsx3
-requests
 SpeechRecognition
 pinecone-client
+pygame
 pyaudio
+soundfile
+sounddevice
