@@ -1,5 +1,5 @@
 # 4-14-2023
-# updated 12-2-2023
+# updated 12-2-2023 to use new openai api format and new openai text to speech
 
 import warnings
 import os
