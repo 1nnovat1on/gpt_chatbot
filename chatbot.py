@@ -43,8 +43,10 @@ global textForWindowII
 AWAKE = True
 
 # Pinecone setup
-pinecone.init(api_key=os.getenv('PINECONEKEY'), environment='us-east1-gcp')
+ENVIRONMENT = 'us-east1-gcp'
+pinecone.init(api_key=os.getenv('PINECONEKEY'), environment=ENVIRONMENT)
 INDEX_NAME = 'imalive'
+
 NUMBER_OF_RELEVANT_THINGS_TO_RETURN_FROM_PINECONE = 5
 
 
