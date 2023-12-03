@@ -355,12 +355,15 @@ def dream():
     ]
 
     printII("I dream")
-    response = openai.ChatCompletion.create(
+
+    # Make them very nice
+    
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=messages
     )
     
-    dream = response.choices[0].message['content'].strip()
+    dream = response.choices[0].message.content.strip()
     
     f = open(memory,'w')
     now = datetime.now()
