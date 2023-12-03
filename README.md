@@ -5,7 +5,7 @@ It features the Pinecone API to create a longterm memory... it will loop in bits
 
 Accounts and API keys for OpenAI and Pinecone required. You will also need to create an index in Pinecone.  
 
-It uses Windows TTS to respond, which might require some intial setup in your control panel/settings.  
+It uses the OpenAI text to speech to respond.
 
 To start:  
 
@@ -34,9 +34,3 @@ By default, your index should be named 'imalive' but you can name it something e
 The index should have these attributes: [metric: cosine; Pod Type:p1x1; Dimensions: 1536]
 
 Also, make note of what environment you use and change the code in the Pinecone section with the correct environment (e.g us-east1-gcp)
-
-
-
-
-4-4-23  
-It also uses ElevenLabs API to respond with a realistic voice.  --Disabled for speed  
