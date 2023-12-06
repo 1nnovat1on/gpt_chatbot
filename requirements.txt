@@ -1,8 +1,10 @@
+pygame
+PyOpenGL
+PyOpenGL-accelerate
 openai
-pyttsx3
 SpeechRecognition
 pinecone-client
-pygame
-pyaudio
 soundfile
 sounddevice
+numpy
+simpleaudio
