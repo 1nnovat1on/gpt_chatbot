@@ -19,8 +19,8 @@ Install git
 Copy this directory to your computer (preferably with git clone https://github.com/1nnovat1on/gpt_chatbot.git)  
 Open your terminal (CMD on Windows)  
 Either:  
-  input API keys on start up  
-  or Set environment variables called OPENAI_API_KEY and PINECONEKEY (use the setx OPENAI_API_KEY urkeygoeshere command)    
+  &emsp;input API keys on start up  
+  &emsp;or Set environment variables called OPENAI_API_KEY and PINECONEKEY (use the setx OPENAI_API_KEY urkeygoeshere command)    
 Navigate to the directory you downloaded the code to with cd. For me that means cd C:\Documents\gpt_chatbot  
 Run pip install -r requirements.txt in your terminal  
 Run python chatbot.py  
